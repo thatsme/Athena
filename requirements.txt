@@ -1,0 +1,4 @@
+fire==0.1.2
+aioredis==1.0.0
+websockets==4.0.1
+async-timeout==2.0.0
