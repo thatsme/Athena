@@ -34,15 +34,16 @@ async def consumer_handler(websocket):
         except:
             pass
 
-async def producer_handler(websocket):
+async def producer_handler(websocket, rip, rport):
     global msg_queue
     global message_count
     while True:
+        print("extra -->", rip, rport)
         print("Waiting for message in queue")
         message = await msg_queue.get()
         print("Get message from queue")
         dataDict = json.loads(message)
-        db = await create_redis(('192.168.1.72', 6379), loop=None, encoding='utf-8')
+        db = await create_redis((rip, rport), loop=None, encoding='utf-8')
         transactionList = dataDict["x"]["inputs"]
         i = 0
         for a in transactionList:
@@ -67,15 +68,16 @@ async def producer_handler(websocket):
         message_count += 1
         print("Message count {}".format(message_count))
 
-async def handler(websocket, path):
+async def handler(websocket, path, rip, rport):
     print("Got a new connection...")
     consumer_task = asyncio.ensure_future(consumer_handler(websocket))
-    producer_task = asyncio.ensure_future(producer_handler(websocket))
+    producer_task = asyncio.ensure_future(producer_handler(websocket, rip, rport))
 
     done, pending = await asyncio.wait([consumer_task, producer_task], return_when=asyncio.FIRST_COMPLETED)
     print("Connection closed, canceling pending tasks")
-    #for task in pending:
-    #    task.cancel()
+    for task in pending:
+        print(task)
+        #task.cancel()
 
 
 #def main(local_server=None, port=None, debug=False):
@@ -100,8 +102,13 @@ def main(argv):
     print("Event loop running forever, press Ctrl+C to interrupt.")
     print("pid %s: send SIGINT or SIGTERM to exit." % os.getpid())
 
-
-    start_server = websockets.serve(handler, config["local_server"]["server"], config["local_server"]["port"])
+    try:
+        bound_handler = functools.partial(handler, rip=config["redis_server"]["server"], rport=config["redis_server"]["port"])
+        start_server = websockets.serve(bound_handler, config["local_server"]["server"], config["local_server"]["port"])
+    except OSError as e:
+        print(e)
+    except:
+        print(start_server)
 
     loop.set_debug(config["debug"])
     loop.call_soon(hello_world, loop)
