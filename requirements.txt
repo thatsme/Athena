@@ -1,4 +1,7 @@
-fire==0.1.2
 aioredis==1.0.0
 websockets==4.0.1
 async-timeout==2.0.0
+subconscious==0.8.5
+async-timeout==2.0.0
+hiredis==0.2.0
+trafaret_config==1.0.1
