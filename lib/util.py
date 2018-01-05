@@ -6,6 +6,11 @@ SERVER_CONFIG = T.Dict({
             'server': T.String(),
             'port': T.Int(),
         }),
+    T.Key('redis_server'):
+        T.Dict({
+            'server': T.IP,
+            'port': T.Int(),
+        }),
     T.Key('debug'): T.Bool(),
 })
 
