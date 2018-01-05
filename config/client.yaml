@@ -1,0 +1,7 @@
+blockchain:
+  server: wss://ws.blockchain.info/inv
+  service_key: op
+  service_value: unconfirmed_sub
+local_server:
+  server: ws://localhost:5555
+debug: True

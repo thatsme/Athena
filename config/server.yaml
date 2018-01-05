@@ -1,0 +1,4 @@
+local_server:
+  server: localhost
+  port : 5555
+debug: False
