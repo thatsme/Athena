@@ -1,11 +1,14 @@
 #!/usr/bin/env python
-
+import argparse
+import logging
+import sys
 import asyncio
 import websockets
 import functools
 import os
 import signal
-import fire
+from trafaret_config import commandline
+from lib.util import CLIENT_CONFIG
 
 message_count = 0
 
@@ -49,6 +52,8 @@ async def myservice(r, l, s):
         ##
         #service = '{"op":"unconfirmed_sub"}'
         #service = '{"op": "ping_tx"}'
+        print(type(s),s)
+        print(type(r),r)
         await websocketremote.send(s)
         print("client> {}".format(s))
         while True:
@@ -57,42 +62,48 @@ async def myservice(r, l, s):
             await senddata(result, l)
 
 
-def main(remote_server, local_server, service, debug=False):
+def main(argv):
+
     """
     Main , if debug is needed, add --debug=True to sc script
 
-    :param remote_server:
-    :param local_server:
-    :param service:
+    :param argv:
     :return:
     """
-    if debug:
-        print(remote_server, type(remote_server))
-        print(local_server, type(local_server))
-        print(service, type(service))
-    ##
-    ## If no data is passed with fire, get some
-    ## defaults
-    ##
-    if not remote_server:
-        remote_server = 'wss://ws.blockchain.info/inv'
-    if not local_server:
-        local_server = 'ws://localhost:5555'
-    if not service:
-        service = '{"op":"unconfirmed_sub"}'
+
+    logging.basicConfig(level=logging.DEBUG)
+
+    ap = argparse.ArgumentParser()
+    commandline.standard_argparse_options(ap, default_config='./config/client.yaml')
+
+    #
+    # define your command-line arguments here
+    #
+    options = ap.parse_args(argv)
+
+    config = commandline.config_from_options(options, CLIENT_CONFIG)
+
+    if config["debug"]:
+        print("Blockchain remote server ",config["blockchain"]["server"])
+        print("Blockchain service key ",config["blockchain"]["service_key"])
+        print("Blockchain service val ",config["blockchain"]["service_value"])
+        print("Local Server ", config["local_server"]["server"])
+
+    blservice = '{{"{}":"{}"}}'.format(config["blockchain"]["service_key"], config["blockchain"]["service_value"])
+
+    #blservice = '{"op":"unconfirmed_sub"}'
 
     loop = asyncio.get_event_loop()
     for signame in ('SIGINT', 'SIGTERM'):
         loop.add_signal_handler(getattr(signal, signame),
-                                functools.partial(ask_exit, signame))
+                                functools.partial(ask_exit, signame, loop))
 
     print("Event loop running forever, press Ctrl+C to interrupt.")
     print("pid %s: send SIGINT or SIGTERM to exit." % os.getpid())
 
-    loop.run_until_complete(myservice(remote_server, local_server, service))
+    loop.run_until_complete(myservice(config["blockchain"]["server"], config["local_server"]["server"], blservice))
     loop.run_forever()
 
 
 if __name__=='__main__':
-    fire.Fire()
-
+    main(sys.argv[1:])

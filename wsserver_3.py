@@ -1,4 +1,6 @@
-import fire
+import argparse
+import logging
+import sys
 import asyncio
 import websockets
 import json
@@ -8,6 +10,8 @@ import signal
 from aioredis import create_redis
 from lib.models import Transactions
 from uuid import uuid4
+from trafaret_config import commandline
+from lib.util import SERVER_CONFIG
 
 msg_queue = asyncio.Queue()
 message_count = 0
@@ -74,11 +78,19 @@ async def handler(websocket, path):
     #    task.cancel()
 
 
-def main(local_server=None, port=None, debug=False):
-    if not local_server:
-        local_server = 'localhost'
-    if not port:
-        port = 5555
+#def main(local_server=None, port=None, debug=False):
+def main(argv):
+
+    logging.basicConfig(level=logging.DEBUG)
+
+    ap = argparse.ArgumentParser()
+    commandline.standard_argparse_options(ap, default_config='./config/server.yaml')
+    #
+    # define your command-line arguments here
+    #
+    options = ap.parse_args(argv)
+
+    config = commandline.config_from_options(options, SERVER_CONFIG)
 
     loop = asyncio.get_event_loop()
     for signame in ('SIGINT', 'SIGTERM'):
@@ -89,14 +101,13 @@ def main(local_server=None, port=None, debug=False):
     print("pid %s: send SIGINT or SIGTERM to exit." % os.getpid())
 
 
-    start_server = websockets.serve(handler, local_server, int(port))
+    start_server = websockets.serve(handler, config["local_server"]["server"], config["local_server"]["port"])
 
-    loop.set_debug(debug)
+    loop.set_debug(config["debug"])
     loop.call_soon(hello_world, loop)
     loop.run_until_complete(start_server)
     loop.run_until_complete(loop.shutdown_asyncgens())
     loop.run_forever()
 
 if __name__=='__main__':
-    #fire.Fire(main)
-    main()
+    main(sys.argv[1:])
