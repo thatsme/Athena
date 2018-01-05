@@ -20,7 +20,13 @@ def ask_exit(signame, loop):
     :return:
     """
     print("got signal %s: exit".format(signame))
-    loop.stop()
+
+    if signame is "SIGINT":
+        print("Shutdown async procedures and stopping the loop\n")
+        loop.shutdown_asyncgens()
+        loop.stop()
+    elif signame is "SIGTERM":
+        loop.close()
 
 async def senddata(msg, lserver):
     """
@@ -30,12 +36,18 @@ async def senddata(msg, lserver):
     :return:
     """
     global message_count
-    async with websockets.connect(lserver) as websocketlocal:
-        await websocketlocal.send(msg)
-        message_count += 1
-        print("client message number > {}".format(message_count))
-        server_message_count = await websocketlocal.recv()
-        print("<server message count {}".format(server_message_count))
+    try:
+        async with websockets.connect(lserver) as websocketlocal:
+            try:
+                await websocketlocal.send(msg)
+                message_count += 1
+                print("client message number > {}".format(message_count))
+                server_message_count = await websocketlocal.recv()
+                print("<server message count {}".format(server_message_count))
+            except:
+                print("oppppppssss.....cant send message")
+    except:
+        print("Connection broken ...")
 
 async def myservice(r, l, s):
     """
@@ -91,8 +103,6 @@ def main(argv):
 
     blservice = '{{"{}":"{}"}}'.format(config["blockchain"]["service_key"], config["blockchain"]["service_value"])
 
-    #blservice = '{"op":"unconfirmed_sub"}'
-
     loop = asyncio.get_event_loop()
     for signame in ('SIGINT', 'SIGTERM'):
         loop.add_signal_handler(getattr(signal, signame),
@@ -101,9 +111,12 @@ def main(argv):
     print("Event loop running forever, press Ctrl+C to interrupt.")
     print("pid %s: send SIGINT or SIGTERM to exit." % os.getpid())
 
-    loop.run_until_complete(myservice(config["blockchain"]["server"], config["local_server"]["server"], blservice))
-    loop.run_forever()
-
+    try:
+        loop.run_until_complete(myservice(config["blockchain"]["server"], config["local_server"]["server"], blservice))
+    except:
+        print("Graceful shutdown ...stopping async's")
+        loop.run_until_complete(loop.shutdown_asyncgens())
+        loop.stop()
 
 if __name__=='__main__':
     main(sys.argv[1:])

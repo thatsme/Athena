@@ -18,7 +18,15 @@ message_count = 0
 
 def ask_exit(signame, loop):
     print("got signal %s: exit" % signame)
-    loop.stop()
+    if signame is "SIGINT":
+        print("Shutdown async procedures and stopping the loop\n")
+        loop.shutdown_asyncgens()
+        loop.stop()
+        print("Press Ctrl+C to exit.\n")
+        #loop.close()
+#    elif signame is "SIGTERM":
+#        loop.shutdown_asyncgens()
+#        loop.stop()
 
 def hello_world(loop):
     print('Test server on Mac')
@@ -97,7 +105,7 @@ def main(argv):
     loop = asyncio.get_event_loop()
     for signame in ('SIGINT', 'SIGTERM'):
         loop.add_signal_handler(getattr(signal, signame),
-                                functools.partial(ask_exit, signame))
+                                functools.partial(ask_exit, signame, loop))
 
     print("Event loop running forever, press Ctrl+C to interrupt.")
     print("pid %s: send SIGINT or SIGTERM to exit." % os.getpid())
@@ -113,7 +121,6 @@ def main(argv):
     loop.set_debug(config["debug"])
     loop.call_soon(hello_world, loop)
     loop.run_until_complete(start_server)
-    loop.run_until_complete(loop.shutdown_asyncgens())
     loop.run_forever()
 
 if __name__=='__main__':
