@@ -1,5 +1,4 @@
-# pyNxt
-Athena
+# Athena
 
 Example of Bitcoin Blockchain transaction reader with output 
 on Redis queue, wsrdclient_3 script connect to blockchain.info 
